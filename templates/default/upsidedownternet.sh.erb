@@ -1,0 +1,67 @@
+#!/bin/bash
+
+declare -r IMAGE_SUFFIXES="jpg png"
+declare -r CACHE_ROOT="<%= node['upsidedownternet']['apache_docroot'] %>"
+declare -r UPSIDEDOWNTERNET_VHOST="<%= node['upsidedownternet']['apache_vhost'] %>:<%= node['upsidedownternet']['apache_port'] %>"
+declare -r TRANSFORMATION=<%= node['upsidedownternet']['transformation'] %>
+declare -r UPSIDEDOWNTERNET_LOG_FILE=<%= node['upsidedownternet']['log_file'] %>
+
+# flip image
+# $1 - filename
+flip() {
+    local filename="$1"; shift
+    mogrify -flip $filename
+}
+
+# blur image a bit
+# $1 - filename
+blur() {
+    local filename="$1"; shift
+    mogrify -blur 2 $filename
+}
+
+# transform url to filename
+# $1 - url
+url_to_filename() {
+    # simply use sha256 to achieve this
+    local url="$1"; shift
+    echo -n "$url" | sha256sum | cut -d' ' -f1
+}
+
+# download image and run transformation
+# $1 - url
+# $2 - transformation to apply
+download_and_transform() {
+    local url="$1"; shift
+    local transformation=$1; shift
+
+    local filename=`url_to_filename $url`
+
+    # was the file already processed?
+    if [ ! -f "$CACHE_ROOT/$filename" ]; then
+        curl -s -o "$CACHE_ROOT/$filename" "$url"
+        $transformation "$CACHE_ROOT/$filename"
+        chmod o+r "$CACHE_ROOT/$filename"
+    fi
+    echo "http://$UPSIDEDOWNTERNET_VHOST/$filename"
+}
+
+# main
+main() {
+    while true; do
+        read line
+        local url=`echo $line | cut -d' ' -f1`
+        local result=$url
+        if echo $url | grep -q "^http://"; then
+            for suffix in $IMAGE_SUFFIXES; do
+                if echo $url | grep -i -q "\.$suffix$"; then
+                    result=`download_and_transform $url $TRANSFORMATION`
+                    echo "Redirecting '$url' >> '$result'" >> $UPSIDEDOWNTERNET_LOG_FILE
+                fi
+            done
+        fi
+        echo $result
+    done
+}
+
+main "$@"
