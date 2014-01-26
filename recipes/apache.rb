@@ -19,6 +19,13 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
+web_app "upsidedownternet" do
+  template    "upsidedownternet-vhost.conf.erb"
+  server_name node['upsidedownternet']['apache_vhost']
+  server_port node['upsidedownternet']['apache_port']
+  docroot     node['upsidedownternet']['apache_docroot']
+end
+
 directory node['upsidedownternet']['apache_docroot'] do
   user  node['apache']['user']
   group node['apache']['group']
@@ -26,9 +33,3 @@ directory node['upsidedownternet']['apache_docroot'] do
   mode  00777
 end
 
-web_app "upsidedownternet" do
-  template    "upsidedownternet-vhost.conf.erb"
-  server_name node['upsidedownternet']['apache_vhost']
-  server_port node['upsidedownternet']['apache_port']
-  docroot     node['upsidedownternet']['apache_docroot']
-end

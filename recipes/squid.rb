@@ -19,18 +19,22 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 #
 
-include_recipe "squid"
+package "curl"
+package "ImageMagick"
 
 template node['upsidedownternet']['url_rewrite_program'] do
   source   "upsidedownternet.sh.erb"
   mode     00755
-  #notifies :restart, 'service[#{node['squid']['service_name']}]', :immediately
+  notifies :restart, "service[#{node['squid']['service_name']}]", :delayed
 end
 
-# Override the original cookbook with our new template
+include_recipe "squid"
+
+# override the original cookbook with our new template
 begin
   r = resources(:template => node['squid']['config_file'])
   r.cookbook "upsidedownternet"
 rescue Chef::Exceptions::ResourceNotFound
   Chef::Log.warn "upsidedownternet::squid could not find template to override!"
 end
+
